@@ -774,6 +774,50 @@ input:focus, select:focus, textarea:focus {
   color: var(--violet);
 }
 
+/* Show/hide toggle for password fields. Pair with:
+   <div class="icon-field">
+     <svg class="icon-field-icon">...lock...</svg>
+     <input type="password" class="has-toggle" ...>
+     <button type="button" class="icon-field-toggle" data-toggle-password aria-label="Show password">
+       <svg class="icon-eye">...</svg><svg class="icon-eye-off" hidden>...</svg>
+     </button>
+   </div>
+   Toggling is handled by a small shared script (see base.html). */
+.icon-field input.has-toggle {
+  padding-right: 40px;
+}
+
+.icon-field-toggle {
+  position: absolute;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--muted);
+  transition: color var(--dur-fast) var(--ease-standard), background var(--dur-fast) var(--ease-standard);
+}
+
+.icon-field-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.icon-field-toggle:hover {
+  color: var(--violet);
+  background: var(--surface-tint);
+}
+
+.icon-field-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+}
+
 textarea { resize: vertical; font-weight: 400; }
 
 .form-actions {
