@@ -3,12 +3,25 @@ LIC Policy Manager
 A small web app for an LIC (insurance) agent to store customer & policy
 details, view a dashboard of policy stats, and export everything to CSV.
 
+Database: Turso (hosted, libSQL-compatible with SQLite) instead of a local
+SQLite file, because serverless platforms like Vercel have a read-only /
+ephemeral filesystem and can't persist a local .db file between requests.
+
+Environment variables required (set these in Vercel -> Project -> Settings
+-> Environment Variables, and in a local .env file for local dev):
+
+    TURSO_DATABASE_URL   e.g. libsql://lic-biswajit.aws-ap-south-1.turso.io
+    TURSO_AUTH_TOKEN     the auth token from your Turso dashboard
+    SECRET_KEY           any long random string, for Flask sessions
+
 Run locally:
     pip install -r requirements.txt
+    export TURSO_DATABASE_URL="libsql://lic-biswajit.aws-ap-south-1.turso.io"
+    export TURSO_AUTH_TOKEN="..."
     python app.py
 Then open http://127.0.0.1:5000
 
-Default login (change this immediately, see bottom of this file):
+Default login (change this immediately via the Account page):
     username: admin
     password: changeme123
 """
@@ -16,18 +29,18 @@ Default login (change this immediately, see bottom of this file):
 import csv
 import io
 import os
-import sqlite3
 from datetime import datetime, timezone
 from functools import wraps
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, Response, g, jsonify
+    session, flash, Response, g
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+import libsql_client
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, "lic_manager.db")
+TURSO_DATABASE_URL = os.environ.get("TURSO_DATABASE_URL", "")
+TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN", "")
 
 app = Flask(__name__)
 # In production, set a real secret via environment variable.
@@ -42,14 +55,27 @@ STATUSES = ["Active", "Lapsed", "Matured", "Surrendered"]
 
 
 # --------------------------------------------------------------------------
-# Database helpers
+# Database helpers (Turso / libSQL over HTTP -- stateless, safe for
+# serverless functions where nothing persists on local disk)
 # --------------------------------------------------------------------------
 
+def _new_client():
+    if not TURSO_DATABASE_URL or not TURSO_AUTH_TOKEN:
+        raise RuntimeError(
+            "TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables "
+            "must be set. Add them in Vercel: Project -> Settings -> "
+            "Environment Variables."
+        )
+    return libsql_client.create_client_sync(
+        url=TURSO_DATABASE_URL,
+        auth_token=TURSO_AUTH_TOKEN,
+    )
+
+
 def get_db():
+    """Returns a request-scoped libSQL client, created once per request."""
     if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys = ON")
+        g.db = _new_client()
     return g.db
 
 
@@ -60,49 +86,88 @@ def close_db(exception=None):
         db.close()
 
 
-def init_db():
-    db = sqlite3.connect(DB_PATH)
-    db.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL
-        );
+def query_all(sql, params=()):
+    """Run a SELECT and return all rows (list of Row, index/name accessible)."""
+    result = get_db().execute(sql, params)
+    return list(result)
 
-        CREATE TABLE IF NOT EXISTS customers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            full_name TEXT NOT NULL,
-            dob TEXT,
-            gender TEXT,
-            phone TEXT,
-            email TEXT,
-            address TEXT,
-            nominee_name TEXT,
-            nominee_relation TEXT,
-            policy_name TEXT NOT NULL,
-            policy_number TEXT NOT NULL UNIQUE,
-            policy_type TEXT,
-            sum_assured REAL,
-            premium_amount REAL,
-            premium_frequency TEXT,
-            start_date TEXT,
-            maturity_date TEXT,
-            status TEXT DEFAULT 'Active',
-            notes TEXT,
-            created_at TEXT NOT NULL
-        );
-        """
+
+def query_one(sql, params=()):
+    """Run a SELECT and return the first row, or None."""
+    rows = query_all(sql, params)
+    return rows[0] if rows else None
+
+
+def execute(sql, params=()):
+    """Run an INSERT/UPDATE/DELETE. Returns the ResultSet (rows_affected etc.)."""
+    return get_db().execute(sql, params)
+
+
+_SCHEMA_STATEMENTS = [
+    """
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL
     )
-    # Seed a default admin user if none exists yet.
-    cur = db.execute("SELECT COUNT(*) FROM users")
-    if cur.fetchone()[0] == 0:
-        db.execute(
-            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-            ("admin", generate_password_hash("changeme123")),
-        )
-    db.commit()
-    db.close()
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT NOT NULL,
+        dob TEXT,
+        gender TEXT,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        nominee_name TEXT,
+        nominee_relation TEXT,
+        policy_name TEXT NOT NULL,
+        policy_number TEXT NOT NULL UNIQUE,
+        policy_type TEXT,
+        sum_assured REAL,
+        premium_amount REAL,
+        premium_frequency TEXT,
+        start_date TEXT,
+        maturity_date TEXT,
+        status TEXT DEFAULT 'Active',
+        notes TEXT,
+        created_at TEXT NOT NULL
+    )
+    """,
+]
+
+_db_initialized = False
+
+
+def init_db():
+    """Create tables (if missing) and seed a default admin user.
+
+    Called on every cold start (see ensure_db_initialized below), not just
+    when running `python app.py` directly -- serverless platforms import
+    this module and never hit `if __name__ == "__main__"`.
+    """
+    global _db_initialized
+    if _db_initialized:
+        return
+    client = _new_client()
+    try:
+        client.batch(_SCHEMA_STATEMENTS)
+        result = client.execute("SELECT COUNT(*) c FROM users")
+        if result[0]["c"] == 0:
+            client.execute(
+                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                ("admin", generate_password_hash("changeme123")),
+            )
+        _db_initialized = True
+    finally:
+        client.close()
+
+
+@app.before_request
+def ensure_db_initialized():
+    # Cheap no-op after the first successful run (per warm container).
+    init_db()
 
 
 # --------------------------------------------------------------------------
@@ -123,10 +188,7 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
-        db = get_db()
-        user = db.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
+        user = query_one("SELECT * FROM users WHERE username = ?", (username,))
         if user and check_password_hash(user["password_hash"], password):
             session["user_id"] = user["id"]
             session["username"] = user["username"]
@@ -149,10 +211,7 @@ def account():
         current = request.form.get("current_password", "")
         new = request.form.get("new_password", "")
         confirm = request.form.get("confirm_password", "")
-        db = get_db()
-        user = db.execute(
-            "SELECT * FROM users WHERE id = ?", (session["user_id"],)
-        ).fetchone()
+        user = query_one("SELECT * FROM users WHERE id = ?", (session["user_id"],))
         if not check_password_hash(user["password_hash"], current):
             flash("Current password is incorrect.", "error")
         elif len(new) < 6:
@@ -160,11 +219,10 @@ def account():
         elif new != confirm:
             flash("New passwords do not match.", "error")
         else:
-            db.execute(
+            execute(
                 "UPDATE users SET password_hash = ? WHERE id = ?",
                 (generate_password_hash(new), user["id"]),
             )
-            db.commit()
             flash("Password updated.", "success")
     return render_template("account.html")
 
@@ -176,45 +234,44 @@ def account():
 @app.route("/")
 @login_required
 def dashboard():
-    db = get_db()
-    total_customers = db.execute("SELECT COUNT(*) c FROM customers").fetchone()["c"]
-    active_policies = db.execute(
+    total_customers = query_one("SELECT COUNT(*) c FROM customers")["c"]
+    active_policies = query_one(
         "SELECT COUNT(*) c FROM customers WHERE status = 'Active'"
-    ).fetchone()["c"]
-    total_premium = db.execute(
+    )["c"]
+    total_premium = query_one(
         "SELECT COALESCE(SUM(premium_amount), 0) s FROM customers"
-    ).fetchone()["s"]
-    total_sum_assured = db.execute(
+    )["s"]
+    total_sum_assured = query_one(
         "SELECT COALESCE(SUM(sum_assured), 0) s FROM customers"
-    ).fetchone()["s"]
+    )["s"]
 
     # Pie chart: policy type distribution
-    type_rows = db.execute(
+    type_rows = query_all(
         "SELECT COALESCE(policy_type, 'Other') t, COUNT(*) c "
         "FROM customers GROUP BY t ORDER BY c DESC"
-    ).fetchall()
+    )
     policy_type_labels = [r["t"] for r in type_rows]
     policy_type_counts = [r["c"] for r in type_rows]
 
     # Bar chart: month-wise new policies (based on start_date), last 12 months
-    month_rows = db.execute(
+    month_rows = query_all(
         "SELECT strftime('%Y-%m', start_date) ym, COUNT(*) c "
         "FROM customers WHERE start_date IS NOT NULL AND start_date != '' "
         "GROUP BY ym ORDER BY ym"
-    ).fetchall()
+    )
     month_labels = [r["ym"] for r in month_rows]
     month_counts = [r["c"] for r in month_rows]
 
     # Status breakdown (used for a small legend / second pie if wanted)
-    status_rows = db.execute(
+    status_rows = query_all(
         "SELECT COALESCE(status,'Active') s, COUNT(*) c FROM customers GROUP BY s"
-    ).fetchall()
+    )
     status_labels = [r["s"] for r in status_rows]
     status_counts = [r["c"] for r in status_rows]
 
-    recent = db.execute(
+    recent = query_all(
         "SELECT * FROM customers ORDER BY created_at DESC LIMIT 5"
-    ).fetchall()
+    )
 
     return render_template(
         "dashboard.html",
@@ -247,19 +304,16 @@ FORM_FIELDS = [
 @app.route("/customers")
 @login_required
 def customers():
-    db = get_db()
     q = request.args.get("q", "").strip()
     if q:
         like = f"%{q}%"
-        rows = db.execute(
+        rows = query_all(
             "SELECT * FROM customers WHERE full_name LIKE ? OR policy_number LIKE ? "
             "OR policy_name LIKE ? ORDER BY created_at DESC",
             (like, like, like),
-        ).fetchall()
+        )
     else:
-        rows = db.execute(
-            "SELECT * FROM customers ORDER BY created_at DESC"
-        ).fetchall()
+        rows = query_all("SELECT * FROM customers ORDER BY created_at DESC")
     return render_template("customers.html", customers=rows, q=q)
 
 
@@ -275,19 +329,20 @@ def new_customer():
                 policy_types=POLICY_TYPES, frequencies=PREMIUM_FREQUENCIES,
                 statuses=STATUSES,
             )
-        db = get_db()
         try:
-            db.execute(
+            execute(
                 f"""INSERT INTO customers
                     ({', '.join(FORM_FIELDS)}, created_at)
                     VALUES ({', '.join('?' for _ in FORM_FIELDS)}, ?)""",
                 [*(data[f] for f in FORM_FIELDS), datetime.now(timezone.utc).isoformat()],
             )
-            db.commit()
             flash("Customer & policy saved.", "success")
             return redirect(url_for("customers"))
-        except sqlite3.IntegrityError:
-            flash("That policy number already exists.", "error")
+        except libsql_client.LibsqlError as e:
+            if "UNIQUE constraint failed" in str(e):
+                flash("That policy number already exists.", "error")
+            else:
+                raise
     return render_template(
         "customer_form.html", customer={}, mode="new",
         policy_types=POLICY_TYPES, frequencies=PREMIUM_FREQUENCIES,
@@ -298,8 +353,7 @@ def new_customer():
 @app.route("/customers/<int:cid>/edit", methods=["GET", "POST"])
 @login_required
 def edit_customer(cid):
-    db = get_db()
-    existing = db.execute("SELECT * FROM customers WHERE id = ?", (cid,)).fetchone()
+    existing = query_one("SELECT * FROM customers WHERE id = ?", (cid,))
     if not existing:
         flash("Customer not found.", "error")
         return redirect(url_for("customers"))
@@ -314,16 +368,18 @@ def edit_customer(cid):
                 statuses=STATUSES,
             )
         try:
-            db.execute(
+            execute(
                 f"""UPDATE customers SET {', '.join(f'{f} = ?' for f in FORM_FIELDS)}
                     WHERE id = ?""",
                 [*(data[f] for f in FORM_FIELDS), cid],
             )
-            db.commit()
             flash("Changes saved.", "success")
             return redirect(url_for("customers"))
-        except sqlite3.IntegrityError:
-            flash("That policy number already exists.", "error")
+        except libsql_client.LibsqlError as e:
+            if "UNIQUE constraint failed" in str(e):
+                flash("That policy number already exists.", "error")
+            else:
+                raise
 
     return render_template(
         "customer_form.html", customer=existing, mode="edit", cid=cid,
@@ -335,9 +391,7 @@ def edit_customer(cid):
 @app.route("/customers/<int:cid>/delete", methods=["POST"])
 @login_required
 def delete_customer(cid):
-    db = get_db()
-    db.execute("DELETE FROM customers WHERE id = ?", (cid,))
-    db.commit()
+    execute("DELETE FROM customers WHERE id = ?", (cid,))
     flash("Customer deleted.", "success")
     return redirect(url_for("customers"))
 
@@ -349,8 +403,7 @@ def delete_customer(cid):
 @app.route("/export/csv")
 @login_required
 def export_csv():
-    db = get_db()
-    rows = db.execute("SELECT * FROM customers ORDER BY created_at DESC").fetchall()
+    rows = query_all("SELECT * FROM customers ORDER BY created_at DESC")
 
     output = io.StringIO()
     writer = csv.writer(output)
