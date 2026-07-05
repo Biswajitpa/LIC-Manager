@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Sign in · Policy Register{% endblock %}
+{% block title %}Sign in - Policy Register{% endblock %}
 {% block auth_content %}
 <div class="auth-page">
   <div class="auth-card">
-    <div class="auth-seal">पॉ</div>
+    <div class="auth-seal">पौ</div>
     <h1>Policy Register</h1>
     <p class="auth-sub">Sign in to open the ledger.</p>
     <form method="POST" class="auth-form">
@@ -17,6 +17,7 @@
       </label>
       <button type="submit" class="btn btn-primary btn-full">Sign in</button>
     </form>
+    <p class="auth-hint">New here? <a href="{{ url_for('signup') }}">Create an account</a>.</p>
     <p class="auth-hint">Default login is <code>admin</code> / <code>changeme123</code> &mdash; change it from Settings after your first sign-in.</p>
   </div>
 </div>
