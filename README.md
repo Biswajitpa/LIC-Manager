@@ -1,6 +1,8 @@
 <div align="center">
 
-# 📋 Policy Register — LIC Agent Web App
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7C3AED,50:FB5D8A,100:06B6D4&height=220&section=header&text=Policy%20Register&fontSize=52&fontColor=ffffff&fontAlignY=38&desc=Your%20entire%20LIC%20book%2C%20one%20clean%20ledger&descAlignY=58&descSize=18&animation=fadeIn" width="100%"/>
+
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Source+Serif+Pro&weight=600&size=22&duration=2800&pause=700&color=7C3AED&center=true&vCenter=true&width=600&lines=Track+every+policyholder+in+seconds.;Visual+dashboards%2C+zero+spreadsheets.;Built+for+agents%2C+not+paperwork.)](https://git.io/typing-svg)
 
 ### A clean, modern workspace for managing policyholders — built for agents who'd rather spend time with clients than with paperwork.
 
@@ -8,6 +10,7 @@
 ![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=for-the-badge&logo=flask&logoColor=white)
 ![Turso](https://img.shields.io/badge/Database-Turso-4FF8D2?style=for-the-badge)
 ![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Made with love](https://img.shields.io/badge/Made%20with-%E2%9D%A4-FB5D8A?style=for-the-badge)
 
 </div>
 
@@ -127,5 +130,7 @@ lic_manager/
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Source+Serif+Pro&weight=600&size=24&duration=3000&pause=800&color=7C3AED&center=true&vCenter=true&width=560&lines=Built+for+agents%2C+not+spreadsheets.;Every+policy%2C+one+place.;Made+with+%E2%9D%A4%EF%B8%8F+and+a+lot+of+coffee.)](https://git.io/typing-svg)
 
 ### 🖋️ Credited & maintained by **Biswajit Pattanaik**
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:06B6D4,50:7C3AED,100:FB5D8A&height=150&section=footer&animation=fadeIn" width="100%"/>
 
 </div>
