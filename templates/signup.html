@@ -1,24 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Sign in - Policy Register{% endblock %}
+{% block title %}Create account - Policy Register{% endblock %}
 {% block auth_content %}
 <div class="auth-page">
   <div class="auth-card">
     <div class="auth-seal">पौ</div>
     <h1>Policy Register</h1>
-    <p class="auth-sub">Sign in to open the ledger.</p>
+    <p class="auth-sub">Create an account to start managing policies.</p>
     <form method="POST" class="auth-form">
       <label>
         <span>Username</span>
-        <input type="text" name="username" autocomplete="username" required autofocus>
+        <input type="text" name="username" autocomplete="username" required autofocus minlength="3">
       </label>
       <label>
         <span>Password</span>
-        <input type="password" name="password" autocomplete="current-password" required>
+        <input type="password" name="password" autocomplete="new-password" required minlength="6">
       </label>
-      <button type="submit" class="btn btn-primary btn-full">Sign in</button>
+      <label>
+        <span>Confirm password</span>
+        <input type="password" name="confirm_password" autocomplete="new-password" required minlength="6">
+      </label>
+      <button type="submit" class="btn btn-primary btn-full">Create account</button>
     </form>
-    <p class="auth-hint">New here? <a href="{{ url_for('signup') }}">Create an account</a>.</p>
-    <p class="auth-hint">Default login is <code>admin</code> / <code>changeme123</code> &mdash; change it from Settings after your first sign-in.</p>
+    <p class="auth-hint">Already have an account? <a href="{{ url_for('login') }}">Sign in</a>.</p>
   </div>
 </div>
 {% endblock %}
