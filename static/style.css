@@ -1,6 +1,10 @@
 /* ---------------------------------------------------------------
-   Policy Register — vibrant, animated theme.
+   Policy Register — vibrant, animated theme (v2).
    Palette: deep violet/indigo base, electric accent spectrum.
+   This pass layers in a richer motion system: animated gradient
+   borders, staggered reveals, gradient-sweep text, a shimmer
+   loading state, and smoother interactive transitions — while
+   keeping every existing class name and variable stable.
 ----------------------------------------------------------------- */
 
 :root {
@@ -28,6 +32,14 @@
   --grad-primary: linear-gradient(135deg, var(--violet) 0%, var(--pink) 100%);
   --grad-cool: linear-gradient(135deg, var(--cyan) 0%, var(--violet) 100%);
   --grad-warm: linear-gradient(135deg, var(--amber) 0%, var(--coral) 100%);
+  --grad-spectrum: linear-gradient(90deg, var(--cyan), var(--violet), var(--pink), var(--amber), var(--cyan));
+
+  /* Motion timing tokens — one shared vocabulary instead of ad-hoc numbers */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 0.18s;
+  --dur-base: 0.32s;
+  --dur-slow: 0.6s;
 }
 
 * { box-sizing: border-box; }
@@ -45,6 +57,13 @@ html, body {
 a { color: var(--violet); text-decoration: none; }
 a:hover { text-decoration: underline; }
 button { font-family: inherit; cursor: pointer; }
+
+/* Smooth, non-jarring scroll for in-page anchor jumps (settings nav, etc) */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+/* ---------------- Keyframes ---------------- */
 
 @keyframes floatBlob {
   0%, 100% { transform: translate(0, 0) scale(1); }
@@ -65,6 +84,50 @@ button { font-family: inherit; cursor: pointer; }
 @keyframes pulseGlow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4); }
   50% { box-shadow: 0 0 0 10px rgba(124, 58, 237, 0); }
+}
+
+/* Slow conic rotation used for animated gradient borders on cards/panels */
+@keyframes spinGradient {
+  to { --angle: 360deg; }
+}
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Text that visibly sweeps through the palette — used sparingly, on
+   the single most important number/heading per view, not everywhere */
+@keyframes textSweep {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Loading shimmer for skeleton placeholders */
+@keyframes skeletonSweep {
+  0% { background-position: -300px 0; }
+  100% { background-position: 300px 0; }
+}
+
+/* Soft rise-and-settle used for toasts / flash messages */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Underline sweep for nav links / table row hover accents */
+@keyframes underlineGrow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Number count-up ready hook (JS can animate a CSS custom property;
+   this keyframe exists so counters have somewhere to land visually) */
+@keyframes valuePop {
+  0% { transform: scale(0.92); opacity: 0.4; }
+  60% { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); }
 }
 
 /* ---------------- App shell ---------------- */
@@ -137,7 +200,9 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--grad-primary);
   flex-shrink: 0;
   animation: pulseGlow 3s ease-in-out infinite;
+  transition: transform var(--dur-base) var(--ease-out);
 }
+.brand-mark:hover { transform: rotate(-8deg) scale(1.06); }
 
 .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
 .brand-text strong { font-family: var(--font-display); font-size: 16px; }
@@ -162,7 +227,10 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 10px;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  position: relative;
+  transition: background var(--dur-base) var(--ease-standard),
+              color var(--dur-base) var(--ease-standard),
+              transform var(--dur-fast) var(--ease-out);
 }
 
 .sidebar-nav a:hover {
@@ -174,8 +242,10 @@ button { font-family: inherit; cursor: pointer; }
 
 .sidebar-nav a.active {
   background: var(--grad-primary);
+  background-size: 200% 200%;
   color: #fff;
   box-shadow: 0 4px 16px rgba(124, 58, 237, 0.5);
+  animation: shimmer 6s ease infinite alternate;
 }
 
 .nav-num {
@@ -183,6 +253,7 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 11px;
   color: var(--amber);
   width: 18px;
+  transition: color var(--dur-fast) var(--ease-standard);
 }
 .sidebar-nav a.active .nav-num { color: #fff; }
 
@@ -197,14 +268,14 @@ button { font-family: inherit; cursor: pointer; }
   z-index: 1;
 }
 
-.account-link { color: #C7C4E8; }
-.logout-link { color: var(--coral); }
+.account-link { color: #C7C4E8; transition: color var(--dur-fast) var(--ease-standard); }
+.logout-link { color: var(--coral); transition: color var(--dur-fast) var(--ease-standard); }
 .account-link:hover, .logout-link:hover { text-decoration: none; color: #fff; }
 
 .main-content {
   padding: 40px 48px 60px;
   max-width: 1180px;
-  animation: fadeSlideUp 0.5s ease both;
+  animation: fadeSlideUp var(--dur-slow) var(--ease-out) both;
 }
 
 /* ---------------- Flash messages ---------------- */
@@ -216,7 +287,7 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 10px;
   font-size: 14px;
   border: 1px solid transparent;
-  animation: fadeSlideUp 0.35s ease both;
+  animation: toastIn var(--dur-base) var(--ease-out) both;
 }
 .flash-error { background: #FFE8E4; color: #C23B2A; border-color: #FFC7BC; }
 .flash-success { background: #E5F9E0; color: #4B8B1F; border-color: #C7EFB8; }
@@ -230,6 +301,23 @@ button { font-family: inherit; cursor: pointer; }
   margin-bottom: 28px;
   padding-bottom: 20px;
   border-bottom: 2px solid var(--rule);
+  position: relative;
+}
+
+/* Animated gradient underline sweeping in beneath the header rule */
+.page-header::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -2px;
+  height: 2px;
+  background: var(--grad-spectrum);
+  background-size: 300% 100%;
+  animation: shimmer 8s linear infinite;
+  transform-origin: left;
+  animation-name: shimmer, underlineGrow;
+  animation-duration: 8s, 0.6s;
+  animation-timing-function: linear, var(--ease-out);
+  animation-iteration-count: infinite, 1;
 }
 
 .eyebrow {
@@ -263,18 +351,50 @@ button { font-family: inherit; cursor: pointer; }
   font-weight: 600;
   border: 1px solid transparent;
   white-space: nowrap;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              filter var(--dur-fast) var(--ease-out);
 }
+.btn:active { transform: translateY(0) scale(0.98); }
 .btn:hover { text-decoration: none; transform: translateY(-2px); }
+
 .btn-primary {
   background: var(--grad-primary);
+  background-size: 160% 160%;
   color: #fff;
   box-shadow: 0 6px 18px rgba(124, 58, 237, 0.35);
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              background-position var(--dur-base) var(--ease-standard);
 }
-.btn-primary:hover { filter: brightness(1.08); box-shadow: 0 10px 24px rgba(124, 58, 237, 0.45); }
-.btn-secondary { background: var(--grad-cool); color: #fff; box-shadow: 0 6px 18px rgba(6, 182, 212, 0.3); }
-.btn-ghost { background: transparent; color: var(--muted); border-color: var(--rule); }
-.btn-ghost:hover { background: var(--surface-tint); }
+.btn-primary:hover {
+  background-position: 100% 0;
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.45);
+}
+
+.btn-secondary {
+  background: var(--grad-cool);
+  background-size: 160% 160%;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(6, 182, 212, 0.3);
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              background-position var(--dur-base) var(--ease-standard);
+}
+.btn-secondary:hover { background-position: 100% 0; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--rule);
+  transition: background var(--dur-fast) var(--ease-standard),
+              border-color var(--dur-fast) var(--ease-standard),
+              color var(--dur-fast) var(--ease-standard),
+              transform var(--dur-fast) var(--ease-out);
+}
+.btn-ghost:hover { background: var(--surface-tint); border-color: var(--violet); color: var(--violet-dark); }
 .btn-full { width: 100%; }
 
 /* ---------------- Stat cards ---------------- */
@@ -296,8 +416,8 @@ button { font-family: inherit; cursor: pointer; }
   gap: 8px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  animation: fadeSlideUp 0.5s ease both;
+  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  animation: fadeSlideUp var(--dur-base) var(--ease-out) both;
 }
 
 .stat-card::before {
@@ -306,17 +426,23 @@ button { font-family: inherit; cursor: pointer; }
   top: 0; left: 0; right: 0;
   height: 4px;
   background: var(--grad-primary);
+  background-size: 200% 100%;
+  transition: background-position var(--dur-slow) var(--ease-standard);
 }
-.stat-card:nth-child(2)::before { background: var(--grad-cool); }
-.stat-card:nth-child(3)::before { background: var(--grad-warm); }
-.stat-card:nth-child(4)::before { background: linear-gradient(135deg, var(--lime), var(--cyan)); }
+.stat-card:nth-child(2)::before { background: var(--grad-cool); background-size: 200% 100%; }
+.stat-card:nth-child(3)::before { background: var(--grad-warm); background-size: 200% 100%; }
+.stat-card:nth-child(4)::before { background: linear-gradient(135deg, var(--lime), var(--cyan)); background-size: 200% 100%; }
 
 .stat-card:nth-child(1) { animation-delay: 0.02s; }
 .stat-card:nth-child(2) { animation-delay: 0.08s; }
 .stat-card:nth-child(3) { animation-delay: 0.14s; }
 .stat-card:nth-child(4) { animation-delay: 0.2s; }
 
-.stat-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(28, 27, 46, 0.1); }
+.stat-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 36px rgba(28, 27, 46, 0.14);
+}
+.stat-card:hover::before { background-position: 100% 0; }
 
 .stat-label {
   font-size: 12px;
@@ -331,6 +457,21 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 30px;
   font-weight: 600;
   color: var(--bg-deep-2);
+  animation: valuePop var(--dur-slow) var(--ease-out) both;
+}
+
+/* Optionally mark one hero stat as the headline figure — sweeps
+   through the palette instead of sitting in flat ink. Add
+   class="stat-value stat-value-hero" to at most one card per view. */
+.stat-value-hero {
+  background: var(--grad-spectrum);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stat-value-hero { animation: valuePop var(--dur-slow) var(--ease-out) both, textSweep 6s ease-in-out infinite; }
 }
 
 /* ---------------- Panels / charts ---------------- */
@@ -348,8 +489,17 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 16px;
   padding: 24px 26px;
   margin-bottom: 16px;
-  animation: fadeSlideUp 0.55s ease both;
+  animation: fadeSlideUp var(--dur-slow) var(--ease-out) both;
+  transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
+.panel:hover { box-shadow: 0 16px 34px rgba(28, 27, 46, 0.08); }
+
+/* Stagger panels within a chart-grid or stacked layout automatically */
+.chart-grid .panel:nth-child(1) { animation-delay: 0.04s; }
+.chart-grid .panel:nth-child(2) { animation-delay: 0.12s; }
+.main-content > .panel:nth-of-type(1) { animation-delay: 0.06s; }
+.main-content > .panel:nth-of-type(2) { animation-delay: 0.14s; }
+.main-content > .panel:nth-of-type(3) { animation-delay: 0.22s; }
 
 .panel-head {
   display: flex;
@@ -366,9 +516,44 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .panel-note { font-size: 12px; color: var(--muted); }
-.panel-link { font-size: 13px; font-weight: 600; }
+.panel-link {
+  font-size: 13px;
+  font-weight: 600;
+  position: relative;
+}
+.panel-link::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -2px;
+  height: 1px;
+  background: var(--grad-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.panel-link:hover::after { transform: scaleX(1); }
+.panel-link:hover { text-decoration: none; }
 
 .empty-note { color: var(--muted); font-size: 14px; }
+
+/* ---------------- Skeleton / loading state ----------------
+   Drop class="skeleton" on a placeholder block (e.g. while a chart
+   or table is fetching) for a soft shimmering placeholder. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-tint);
+  border-radius: 8px;
+  color: transparent !important;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(124,58,237,0.10), transparent);
+  background-size: 300px 100%;
+  animation: skeletonSweep 1.3s ease-in-out infinite;
+}
 
 /* ---------------- Tables ---------------- */
 
@@ -388,7 +573,19 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 14px;
   vertical-align: middle;
 }
-.ledger-table tbody tr { transition: background 0.15s ease; }
+.ledger-table tbody tr {
+  transition: background var(--dur-fast) var(--ease-standard);
+  animation: fadeSlideUp var(--dur-base) var(--ease-out) both;
+}
+/* Stagger the first dozen rows on load; rows beyond that share the
+   final delay so a long table doesn't take seconds to finish animating */
+.ledger-table tbody tr:nth-child(1) { animation-delay: 0.01s; }
+.ledger-table tbody tr:nth-child(2) { animation-delay: 0.04s; }
+.ledger-table tbody tr:nth-child(3) { animation-delay: 0.07s; }
+.ledger-table tbody tr:nth-child(4) { animation-delay: 0.10s; }
+.ledger-table tbody tr:nth-child(5) { animation-delay: 0.13s; }
+.ledger-table tbody tr:nth-child(n+6) { animation-delay: 0.16s; }
+
 .ledger-table tbody tr:hover { background: var(--surface-tint); cursor: default; }
 .ledger-table tbody tr[onclick] { cursor: pointer; }
 .subtext { font-size: 12px; color: var(--muted); }
@@ -396,12 +593,20 @@ button { font-family: inherit; cursor: pointer; }
 
 .row-actions { display: flex; gap: 12px; }
 .row-actions form { display: inline; }
-.link-edit { color: var(--violet); font-size: 13px; font-weight: 700; }
+.link-edit {
+  color: var(--violet);
+  font-size: 13px;
+  font-weight: 700;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
 .link-delete {
   background: none; border: none; color: var(--coral);
   font-size: 13px; font-weight: 700; padding: 0; font-family: inherit;
+  transition: color var(--dur-fast) var(--ease-standard);
 }
 .link-delete:hover, .link-edit:hover { text-decoration: underline; }
+.link-delete:hover { color: #C23B2A; }
+.link-edit:hover { color: var(--violet-dark); }
 
 /* ---------------- Badges ---------------- */
 
@@ -413,8 +618,25 @@ button { font-family: inherit; cursor: pointer; }
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
-.badge-active { background: linear-gradient(135deg, #DFF7D8, #C7EFB8); color: #3D7A17; }
+.badge-active {
+  background: linear-gradient(135deg, #DFF7D8, #C7EFB8);
+  color: #3D7A17;
+  position: relative;
+}
+/* Subtle live-status pulse — small dot before the label reads as
+   "this policy is currently active", not just decoration */
+.badge-active::before {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #3D7A17;
+  margin-right: 6px;
+  vertical-align: middle;
+  animation: pulseGlow 2.2s ease-in-out infinite;
+}
 .badge-lapsed { background: linear-gradient(135deg, #FFE3DD, #FFC7BC); color: #C23B2A; }
 .badge-matured { background: linear-gradient(135deg, #E3E8FF, #CBD3FF); color: var(--violet-dark); }
 .badge-surrendered { background: linear-gradient(135deg, #F0EEFA, #E7E2FA); color: var(--muted); }
@@ -430,7 +652,7 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--surface);
   font-family: inherit;
   font-size: 14px;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: box-shadow var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
 }
 .search-bar input:focus {
   outline: none;
@@ -444,7 +666,11 @@ button { font-family: inherit; cursor: pointer; }
   border: none;
   padding: 0;
   margin: 0 0 28px;
+  animation: fadeSlideUp var(--dur-base) var(--ease-out) both;
 }
+.form-grid fieldset:nth-of-type(1) { animation-delay: 0.02s; }
+.form-grid fieldset:nth-of-type(2) { animation-delay: 0.08s; }
+.form-grid fieldset:nth-of-type(3) { animation-delay: 0.14s; }
 .form-grid fieldset:last-of-type { margin-bottom: 0; }
 
 .form-grid legend {
@@ -486,7 +712,7 @@ input, select, textarea {
   border-radius: 10px;
   border: 1px solid var(--rule);
   background: var(--surface);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: box-shadow var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
 }
 
 input:focus, select:focus, textarea:focus {
@@ -555,9 +781,11 @@ textarea { resize: vertical; font-weight: 400; }
   box-shadow: 0 30px 70px rgba(0,0,0,0.4);
   position: relative;
   z-index: 1;
-  animation: fadeSlideUp 0.5s ease both;
+  animation: fadeSlideUp var(--dur-slow) var(--ease-out) both;
 }
 
+/* Animated conic gradient ring around the seal — the one "signature"
+   flourish on the whole page, used nowhere else */
 .auth-seal {
   width: 58px;
   height: 58px;
@@ -571,7 +799,23 @@ textarea { resize: vertical; font-weight: 400; }
   font-size: 20px;
   color: #fff;
   background: var(--grad-primary);
+  position: relative;
   animation: pulseGlow 3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .auth-seal::before {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    padding: 2px;
+    background: conic-gradient(from var(--angle), var(--cyan), var(--violet), var(--pink), var(--amber), var(--cyan));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: spinGradient 4s linear infinite;
+    z-index: -1;
+  }
 }
 
 .auth-card h1 {
@@ -608,10 +852,14 @@ textarea { resize: vertical; font-weight: 400; }
   .field-row { grid-template-columns: 1fr; }
 }
 
+/* prefers-reduced-motion: freeze every animation to a single, instant
+   frame rather than merely speeding it up — this must stay the last
+   rule in the file so it wins the cascade against additions above. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
