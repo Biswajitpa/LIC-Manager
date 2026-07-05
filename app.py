@@ -66,8 +66,14 @@ def _new_client():
             "must be set. Add them in Vercel: Project -> Settings -> "
             "Environment Variables."
         )
+    # Use plain HTTPS instead of the default libsql:// (which maps to a
+    # WebSocket connection, wss://). Serverless functions on platforms like
+    # Vercel are short-lived and often can't hold a WebSocket open, which
+    # causes a WSServerHandshakeError. HTTPS is stateless and works reliably
+    # in serverless environments.
+    http_url = TURSO_DATABASE_URL.replace("libsql://", "https://", 1)
     return libsql_client.create_client_sync(
-        url=TURSO_DATABASE_URL,
+        url=http_url,
         auth_token=TURSO_AUTH_TOKEN,
     )
 
