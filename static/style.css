@@ -1,10 +1,12 @@
 /* ---------------------------------------------------------------
-   Policy Register — vibrant, animated theme (v2).
-   Palette: deep violet/indigo base, electric accent spectrum.
-   This pass layers in a richer motion system: animated gradient
-   borders, staggered reveals, gradient-sweep text, a shimmer
-   loading state, and smoother interactive transitions — while
-   keeping every existing class name and variable stable.
+   Policy Register — glassmorphism theme (v3).
+   Palette: deep violet/indigo base, electric accent spectrum,
+   frosted translucent surfaces floating over a live gradient-mesh
+   backdrop. Every existing class name and CSS variable from the
+   previous pass is preserved so templates never need to change —
+   this pass changes *how* surfaces are rendered (glass, depth,
+   tilt-on-hover) and hardens the responsive system across phones,
+   tablets, laptops, and large desktops.
 ----------------------------------------------------------------- */
 
 :root {
@@ -40,6 +42,14 @@
   --dur-fast: 0.18s;
   --dur-base: 0.32s;
   --dur-slow: 0.6s;
+
+  /* Glass tokens — tuned once, reused everywhere a frosted surface appears */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-blur: 20px;
+  --glass-shadow: 0 8px 32px rgba(28, 27, 46, 0.10);
+  --glass-shadow-hover: 0 24px 48px rgba(92, 51, 176, 0.22);
 }
 
 * { box-sizing: border-box; }
@@ -47,11 +57,66 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--surface-tint);
   color: var(--charcoal);
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.5;
+  min-height: 100%;
+}
+
+/* ---------------- Ambient gradient-mesh backdrop ----------------
+   A fixed field of soft, slowly drifting color blobs behind every
+   page. Glass surfaces (.panel, .stat-card, .auth-card, etc.) blur
+   this backdrop through themselves — without it, "glass" surfaces
+   would just look like flat, slightly transparent boxes. */
+body {
+  background: var(--surface-tint);
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(10px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::before {
+  width: min(46vw, 620px);
+  height: min(46vw, 620px);
+  top: -12%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(124,58,237,0.24) 0%, rgba(124,58,237,0) 70%);
+  animation: floatBlob 22s ease-in-out infinite;
+}
+
+body::after {
+  width: min(40vw, 560px);
+  height: min(40vw, 560px);
+  bottom: -14%;
+  left: -8%;
+  background: radial-gradient(circle, rgba(6,182,212,0.20) 0%, rgba(6,182,212,0) 70%);
+  animation: floatBlob 26s ease-in-out infinite reverse;
+}
+
+/* A third, smaller drifting accent kept purely decorative and cheap */
+.app-shell::after {
+  content: "";
+  position: fixed;
+  width: min(30vw, 420px);
+  height: min(30vw, 420px);
+  border-radius: 50%;
+  top: 40%;
+  left: 55%;
+  background: radial-gradient(circle, rgba(251,93,138,0.14) 0%, rgba(251,93,138,0) 70%);
+  filter: blur(10px);
+  z-index: -1;
+  pointer-events: none;
+  animation: floatBlob 30s ease-in-out infinite;
 }
 
 a { color: var(--violet); text-decoration: none; }
@@ -138,12 +203,71 @@ canvas, svg, img, embed, object {
   100% { transform: scale(1); }
 }
 
+/* Sheen sweep used across glass cards on hover — a diagonal band of
+   light passing over the frosted surface, like light on glass */
+@keyframes glassSheen {
+  from { transform: translateX(-120%) rotate(8deg); }
+  to { transform: translateX(120%) rotate(8deg); }
+}
+
+/* ---------------- Glass surface base ----------------
+   Shared frosted-glass treatment. Applied directly to .panel,
+   .stat-card, and .auth-card below so all three read as one
+   consistent material rather than three separate styles. */
+.glass-surface {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.glass-surface::before {
+  /* soft inner highlight along the top edge, like light catching glass */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-surface::after {
+  /* the hover sheen sweep, dormant until .glass-hover triggers it */
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: 0;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%);
+  transform: translateX(-120%) rotate(8deg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glass-surface > * { position: relative; z-index: 2; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .glass-hover:hover::after { animation: glassSheen 0.9s var(--ease-out); }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* Fallback for browsers without backdrop-filter support: a solid,
+     slightly-tinted surface keeps text legible instead of a flat see-through box. */
+  .glass-surface { background: var(--surface-tint); }
+}
+
 /* ---------------- App shell ---------------- */
 
 .app-shell {
   display: grid;
   grid-template-columns: 260px 1fr;
   min-height: 100vh;
+  position: relative;
 }
 
 .sidebar {
@@ -158,6 +282,7 @@ canvas, svg, img, embed, object {
   top: 0;
   height: 100vh;
   overflow: hidden;
+  z-index: 2;
 }
 
 .sidebar::before {
@@ -283,7 +408,11 @@ canvas, svg, img, embed, object {
 .main-content {
   padding: 40px 48px 60px;
   max-width: 1180px;
+  margin: 0 auto;
+  width: 100%;
   animation: fadeSlideUp var(--dur-slow) var(--ease-out) both;
+  position: relative;
+  z-index: 1;
 }
 
 /* ---------------- Flash messages ---------------- */
@@ -296,9 +425,11 @@ canvas, svg, img, embed, object {
   font-size: 14px;
   border: 1px solid transparent;
   animation: toastIn var(--dur-base) var(--ease-out) both;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
-.flash-error { background: #FFE8E4; color: #C23B2A; border-color: #FFC7BC; }
-.flash-success { background: #E5F9E0; color: #4B8B1F; border-color: #C7EFB8; }
+.flash-error { background: rgba(255, 232, 228, 0.85); color: #C23B2A; border-color: #FFC7BC; }
+.flash-success { background: rgba(229, 249, 224, 0.85); color: #4B8B1F; border-color: #C7EFB8; }
 
 /* ---------------- Page header ---------------- */
 
@@ -306,6 +437,8 @@ canvas, svg, img, embed, object {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
   margin-bottom: 28px;
   padding-bottom: 20px;
   border-bottom: 2px solid var(--rule);
@@ -320,7 +453,6 @@ canvas, svg, img, embed, object {
   height: 2px;
   background: var(--grad-spectrum);
   background-size: 300% 100%;
-  animation: shimmer 8s linear infinite;
   transform-origin: left;
   animation-name: shimmer, underlineGrow;
   animation-duration: 8s, 0.6s;
@@ -342,7 +474,7 @@ canvas, svg, img, embed, object {
 
 .page-header h1 {
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: clamp(24px, 3.4vw, 30px);
   margin: 4px 0 0;
   color: var(--bg-deep-2);
 }
@@ -367,6 +499,7 @@ canvas, svg, img, embed, object {
 }
 .btn:active { transform: translateY(0) scale(0.98); }
 .btn:hover { text-decoration: none; transform: translateY(-2px); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.35); }
 
 .btn-primary {
   background: var(--grad-primary);
@@ -394,7 +527,9 @@ canvas, svg, img, embed, object {
 .btn-secondary:hover { background-position: 100% 0; }
 
 .btn-ghost {
-  background: transparent;
+  background: rgba(255,255,255,0.4);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   color: var(--muted);
   border-color: var(--rule);
   transition: background var(--dur-fast) var(--ease-standard),
@@ -405,7 +540,7 @@ canvas, svg, img, embed, object {
 .btn-ghost:hover { background: var(--surface-tint); border-color: var(--violet); color: var(--violet-dark); }
 .btn-full { width: 100%; }
 
-/* ---------------- Stat cards ---------------- */
+/* ---------------- Stat cards (glass) ---------------- */
 
 .stat-grid {
   display: grid;
@@ -415,18 +550,42 @@ canvas, svg, img, embed, object {
 }
 
 .stat-card {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 14px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 16px;
   padding: 20px 22px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   position: relative;
+  isolation: isolate;
   overflow: hidden;
-  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  transition: transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out),
+              border-color var(--dur-base) var(--ease-out);
   animation: fadeSlideUp var(--dur-base) var(--ease-out) both;
+  transform-style: preserve-3d;
+  perspective: 800px;
 }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .stat-card { background: var(--surface); }
+}
+
+/* Soft top-edge highlight, like light catching the glass */
+.stat-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 45%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.stat-card span { position: relative; z-index: 1; }
 
 .stat-card::before {
   content: "";
@@ -436,6 +595,7 @@ canvas, svg, img, embed, object {
   background: var(--grad-primary);
   background-size: 200% 100%;
   transition: background-position var(--dur-slow) var(--ease-standard);
+  z-index: 3;
 }
 .stat-card:nth-child(2)::before { background: var(--grad-cool); background-size: 200% 100%; }
 .stat-card:nth-child(3)::before { background: var(--grad-warm); background-size: 200% 100%; }
@@ -447,8 +607,9 @@ canvas, svg, img, embed, object {
 .stat-card:nth-child(4) { animation-delay: 0.2s; }
 
 .stat-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 18px 36px rgba(28, 27, 46, 0.14);
+  transform: translateY(-8px) rotateX(2deg);
+  box-shadow: var(--glass-shadow-hover);
+  border-color: rgba(124, 58, 237, 0.35);
 }
 .stat-card:hover::before { background-position: 100% 0; }
 
@@ -462,7 +623,7 @@ canvas, svg, img, embed, object {
 
 .stat-value {
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: clamp(22px, 2.6vw, 30px);
   font-weight: 600;
   color: var(--bg-deep-2);
   animation: valuePop var(--dur-slow) var(--ease-out) both;
@@ -482,7 +643,7 @@ canvas, svg, img, embed, object {
   .stat-value-hero { animation: valuePop var(--dur-slow) var(--ease-out) both, textSweep 6s ease-in-out infinite; }
 }
 
-/* ---------------- Panels / charts ---------------- */
+/* ---------------- Panels / charts (glass) ---------------- */
 
 .chart-grid {
   display: grid;
@@ -492,15 +653,62 @@ canvas, svg, img, embed, object {
 }
 
 .panel {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 16px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 18px;
   padding: 24px 26px;
   margin-bottom: 16px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   animation: fadeSlideUp var(--dur-slow) var(--ease-out) both;
-  transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+  transition: box-shadow var(--dur-base) var(--ease-out),
+              transform var(--dur-base) var(--ease-out),
+              border-color var(--dur-base) var(--ease-out);
 }
-.panel:hover { box-shadow: 0 16px 34px rgba(28, 27, 46, 0.08); }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .panel { background: var(--surface); }
+}
+
+/* Soft top-edge highlight, like light catching the glass */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Diagonal light sheen that sweeps across on hover */
+.panel::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: 0;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%);
+  transform: translateX(-120%) rotate(8deg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel:hover::after { animation: glassSheen 0.9s var(--ease-out); }
+}
+
+.panel > * { position: relative; z-index: 2; }
+
+.panel:hover {
+  box-shadow: var(--glass-shadow-hover);
+  transform: translateY(-3px);
+  border-color: rgba(124, 58, 237, 0.3);
+}
 
 /* Stagger panels within a chart-grid or stacked layout automatically */
 .chart-grid .panel:nth-child(1) { animation-delay: 0.04s; }
@@ -513,6 +721,8 @@ canvas, svg, img, embed, object {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
@@ -594,12 +804,12 @@ canvas, svg, img, embed, object {
 .ledger-table tbody tr:nth-child(5) { animation-delay: 0.13s; }
 .ledger-table tbody tr:nth-child(n+6) { animation-delay: 0.16s; }
 
-.ledger-table tbody tr:hover { background: var(--surface-tint); cursor: default; }
+.ledger-table tbody tr:hover { background: rgba(124, 58, 237, 0.06); cursor: default; }
 .ledger-table tbody tr[onclick] { cursor: pointer; }
 .subtext { font-size: 12px; color: var(--muted); }
 .mono { font-family: var(--font-mono); font-size: 13px; color: var(--violet-dark); }
 
-.row-actions { display: flex; gap: 12px; }
+.row-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .row-actions form { display: inline; }
 .link-edit {
   color: var(--violet);
@@ -615,6 +825,11 @@ canvas, svg, img, embed, object {
 .link-delete:hover, .link-edit:hover { text-decoration: underline; }
 .link-delete:hover { color: #C23B2A; }
 .link-edit:hover { color: var(--violet-dark); }
+
+/* Card-based table fallback for very small screens, activated in the
+   phone media query further down — turns each row into its own
+   glass card instead of a horizontally-scrolling table. */
+.ledger-table-cards { display: none; }
 
 /* ---------------- Badges ---------------- */
 
@@ -651,13 +866,16 @@ canvas, svg, img, embed, object {
 
 /* ---------------- Search bar ---------------- */
 
-.search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+.search-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 .search-bar input {
   flex: 1;
+  min-width: 200px;
   padding: 11px 16px;
   border-radius: 10px;
   border: 1px solid var(--rule);
-  background: var(--surface);
+  background: rgba(255,255,255,0.7);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   font-family: inherit;
   font-size: 14px;
   transition: box-shadow var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
@@ -731,7 +949,7 @@ input, select, textarea {
   padding: 10px 13px;
   border-radius: 10px;
   border: 1px solid var(--rule);
-  background: var(--surface);
+  background: rgba(255,255,255,0.75);
   transition: box-shadow var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
 }
 
@@ -825,9 +1043,10 @@ textarea { resize: vertical; font-weight: 400; }
   justify-content: flex-end;
   gap: 12px;
   padding-top: 8px;
+  flex-wrap: wrap;
 }
 
-/* ---------------- Auth page ---------------- */
+/* ---------------- Auth page (glass) ---------------- */
 
 .auth-page {
   min-height: 100vh;
@@ -867,8 +1086,11 @@ textarea { resize: vertical; font-weight: 400; }
 }
 
 .auth-card {
-  background: var(--surface);
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 22px;
   padding: 44px 38px;
   width: 100%;
   max-width: 380px;
@@ -877,6 +1099,22 @@ textarea { resize: vertical; font-weight: 400; }
   position: relative;
   z-index: 1;
   animation: fadeSlideUp var(--dur-slow) var(--ease-out) both;
+  color: #F3F1FC;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .auth-card { background: var(--surface); color: var(--charcoal); }
+}
+
+.auth-card h1 { color: #FFFFFF; }
+.auth-sub { color: #C7C4E8; }
+.auth-hint { color: #B6B2DA; }
+.auth-hint code { background: rgba(255,255,255,0.12); color: #F0EEFF; }
+
+label { color: var(--muted); }
+.auth-form label { color: #D9D6F2; }
+.auth-form input {
+  background: rgba(255,255,255,0.92);
 }
 
 /* Animated conic gradient ring around the seal — the one "signature"
@@ -913,31 +1151,35 @@ textarea { resize: vertical; font-weight: 400; }
   }
 }
 
-.auth-card h1 {
-  font-family: var(--font-display);
-  font-size: 25px;
-  margin: 0 0 4px;
-  color: var(--bg-deep-2);
-}
-
-.auth-sub { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
-
 .auth-form { display: flex; flex-direction: column; gap: 16px; text-align: left; }
 
-.auth-hint { font-size: 12px; color: var(--muted); margin-top: 20px; line-height: 1.6; }
-.auth-hint code {
-  background: var(--surface-tint);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  color: var(--violet-dark);
-}
+/* ---------------- Responsive system ----------------
+   Breakpoints:
+   ≥1440px  large desktop  — more breathing room, wider stat grid gaps
+   901–1439 laptop/desktop — default layout defined above
+   769–900  small laptop / large tablet — sidebar collapses to a top bar
+   481–768  tablet / large phone — 2-column stats, stacked charts
+   ≤480     phone — single column everywhere, larger tap targets
+------------------------------------------------------------------ */
 
-/* ---------------- Responsive ---------------- */
+@media (min-width: 1440px) {
+  .main-content { max-width: 1320px; padding: 48px 56px 72px; }
+  .stat-grid { gap: 20px; }
+  .chart-grid { gap: 20px; }
+}
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 1fr; }
-  .sidebar { position: relative; height: auto; flex-direction: row; align-items: center; padding: 16px 20px; overflow-x: auto; }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 20px;
+    overflow-x: auto;
+    z-index: 10;
+  }
   .sidebar-brand { margin-bottom: 0; margin-right: 24px; }
   .sidebar-nav { flex-direction: row; }
   .sidebar-footer {
@@ -956,6 +1198,15 @@ textarea { resize: vertical; font-weight: 400; }
   .field-row-2 { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 768px) {
+  .stat-card:hover,
+  .panel:hover {
+    /* Tilt/lift relies on a mouse; on touch devices skip the transform
+       so a tap doesn't leave a card visually "stuck" mid-hover. */
+    transform: none;
+  }
+}
+
 /* ---------------- Small phones ----------------
    Below ~480px: single-column stat cards, larger touch targets on
    buttons/inputs (44px is the accepted minimum tap-target height),
@@ -966,7 +1217,7 @@ textarea { resize: vertical; font-weight: 400; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
   .page-header .btn { width: 100%; }
   .stat-grid { grid-template-columns: 1fr; }
-  .panel { padding: 18px 16px; border-radius: 12px; }
+  .panel { padding: 18px 16px; border-radius: 14px; }
 
   .btn { padding: 13px 20px; min-height: 44px; }
   input, select, textarea { padding: 12px 13px; font-size: 16px; } /* 16px avoids iOS auto-zoom on focus */
@@ -976,10 +1227,39 @@ textarea { resize: vertical; font-weight: 400; }
   .search-bar .btn { width: 100%; }
 
   .row-actions { flex-direction: column; gap: 8px; align-items: flex-start; }
-  .ledger-table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+
+  /* Turn the ledger table into stacked glass cards instead of a
+     horizontally-scrolling table, which is hard to use one-handed. */
+  .ledger-table thead { display: none; }
+  .ledger-table, .ledger-table tbody, .ledger-table tr, .ledger-table td {
+    display: block;
+    width: 100%;
+  }
+  .ledger-table tr {
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+  }
+  .ledger-table td {
+    border-bottom: none;
+    padding: 6px 0;
+  }
+  .ledger-table td:before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
 
   .auth-page { padding: 12px; }
-  .auth-card { padding: 32px 22px; border-radius: 16px; }
+  .auth-card { padding: 32px 22px; border-radius: 18px; }
 
   .sidebar-nav a span:not(.nav-num) { font-size: 13px; }
 }
@@ -993,5 +1273,8 @@ textarea { resize: vertical; font-weight: 400; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  body::before, body::after, .app-shell::after {
+    display: none;
   }
 }
