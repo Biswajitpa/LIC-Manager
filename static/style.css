@@ -723,6 +723,36 @@ input:focus, select:focus, textarea:focus {
 
 .mono-input { font-family: var(--font-mono); }
 
+/* ---------------- Icon fields ----------------
+   Wrap an input with <div class="icon-field"> and place an
+   <svg class="icon-field-icon"> as the first child, right before
+   the <input>. Used on the auth pages (username/lock icons); safe
+   to reuse anywhere a leading icon helps scanability. */
+.icon-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.icon-field-icon {
+  position: absolute;
+  left: 13px;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  pointer-events: none;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+
+.icon-field input {
+  width: 100%;
+  padding-left: 38px;
+}
+
+.icon-field:focus-within .icon-field-icon {
+  color: var(--violet);
+}
+
 textarea { resize: vertical; font-weight: 400; }
 
 .form-actions {
