@@ -744,7 +744,8 @@ input:focus, select:focus, textarea:focus {
   transition: color var(--dur-fast) var(--ease-standard);
 }
 
-.icon-field input {
+.icon-field input,
+.icon-field select {
   width: 100%;
   padding-left: 38px;
 }
