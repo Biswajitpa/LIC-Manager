@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if mode == 'edit' else 'New' }} Entry · Policy Register{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <span class="eyebrow">Ledger — Page {{ '02' if mode == 'edit' else '03' }}</span>
+    <h1>{{ 'Edit Policyholder' if mode == 'edit' else 'New Policyholder' }}</h1>
+  </div>
+</header>
+
+<form method="POST" class="panel form-grid">
+  <fieldset>
+    <legend>Personal details</legend>
+    <div class="field-row">
+      <label>Full name*
+        <input type="text" name="full_name" value="{{ customer.full_name or '' }}" required>
+      </label>
+      <label>Date of birth
+        <input type="date" name="dob" value="{{ customer.dob or '' }}">
+      </label>
+      <label>Gender
+        <select name="gender">
+          <option value="">—</option>
+          {% for g in ['Male','Female','Other'] %}
+          <option value="{{ g }}" {{ 'selected' if customer.gender == g }}>{{ g }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <div class="field-row">
+      <label>Phone
+        <input type="text" name="phone" value="{{ customer.phone or '' }}">
+      </label>
+      <label>Email
+        <input type="email" name="email" value="{{ customer.email or '' }}">
+      </label>
+    </div>
+    <label class="field-full">Address
+      <textarea name="address" rows="2">{{ customer.address or '' }}</textarea>
+    </label>
+    <div class="field-row">
+      <label>Nominee name
+        <input type="text" name="nominee_name" value="{{ customer.nominee_name or '' }}">
+      </label>
+      <label>Nominee relation
+        <input type="text" name="nominee_relation" value="{{ customer.nominee_relation or '' }}">
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Policy details</legend>
+    <div class="field-row">
+      <label>Policy name*
+        <input type="text" name="policy_name" value="{{ customer.policy_name or '' }}" placeholder="e.g. Jeevan Anand" required>
+      </label>
+      <label>Policy number*
+        <input type="text" name="policy_number" value="{{ customer.policy_number or '' }}" class="mono-input" required>
+      </label>
+      <label>Policy type
+        <select name="policy_type">
+          <option value="">—</option>
+          {% for t in policy_types %}
+          <option value="{{ t }}" {{ 'selected' if customer.policy_type == t }}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <div class="field-row">
+      <label>Sum assured (₹)
+        <input type="number" step="0.01" name="sum_assured" value="{{ customer.sum_assured or '' }}">
+      </label>
+      <label>Premium amount (₹)
+        <input type="number" step="0.01" name="premium_amount" value="{{ customer.premium_amount or '' }}">
+      </label>
+      <label>Premium frequency
+        <select name="premium_frequency">
+          <option value="">—</option>
+          {% for f in frequencies %}
+          <option value="{{ f }}" {{ 'selected' if customer.premium_frequency == f }}>{{ f }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <div class="field-row">
+      <label>Start date
+        <input type="date" name="start_date" value="{{ customer.start_date or '' }}">
+      </label>
+      <label>Maturity date
+        <input type="date" name="maturity_date" value="{{ customer.maturity_date or '' }}">
+      </label>
+      <label>Status
+        <select name="status">
+          {% for s in statuses %}
+          <option value="{{ s }}" {{ 'selected' if (customer.status or 'Active') == s }}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <label class="field-full">Notes
+      <textarea name="notes" rows="3">{{ customer.notes or '' }}</textarea>
+    </label>
+  </fieldset>
+
+  <div class="form-actions">
+    <a href="{{ url_for('customers') }}" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">{{ 'Save changes' if mode == 'edit' else 'Save entry' }}</button>
+  </div>
+</form>
+{% endblock %}

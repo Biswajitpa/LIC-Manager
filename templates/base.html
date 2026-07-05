@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Policy Register{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if session.user_id %}
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark">पॉ</span>
+      <div class="brand-text">
+        <strong>Policy Register</strong>
+        <span>Agent Ledger</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">
+        <span class="nav-num">01</span> Overview
+      </a>
+      <a href="{{ url_for('customers') }}" class="{{ 'active' if request.endpoint in ['customers','new_customer','edit_customer'] }}">
+        <span class="nav-num">02</span> Policyholders
+      </a>
+      <a href="{{ url_for('new_customer') }}" class="{{ 'active' if request.endpoint == 'new_customer' }}">
+        <span class="nav-num">03</span> New Entry
+      </a>
+      <a href="{{ url_for('export_csv') }}">
+        <span class="nav-num">04</span> Export CSV
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('account') }}" class="account-link">{{ session.username }} · settings</a>
+      <a href="{{ url_for('logout') }}" class="logout-link">Sign out</a>
+    </div>
+  </aside>
+  <main class="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% else %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack flash-stack-standalone">
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block auth_content %}{% endblock %}
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Policyholders · Policy Register{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <span class="eyebrow">Ledger — Page 02</span>
+    <h1>Policyholders</h1>
+  </div>
+  <a href="{{ url_for('new_customer') }}" class="btn btn-primary">+ New Entry</a>
+</header>
+
+<form class="search-bar" method="GET">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search by name, policy name or policy number…">
+  <button type="submit" class="btn btn-secondary">Search</button>
+  {% if q %}<a href="{{ url_for('customers') }}" class="btn btn-ghost">Clear</a>{% endif %}
+</form>
+
+<section class="panel">
+  {% if customers %}
+  <table class="ledger-table">
+    <thead>
+      <tr>
+        <th>Policyholder</th>
+        <th>Policy Name</th>
+        <th>Policy Number</th>
+        <th>Type</th>
+        <th>Premium</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in customers %}
+      <tr>
+        <td>
+          <strong>{{ c['full_name'] }}</strong><br>
+          <span class="subtext">{{ c['phone'] or '—' }}</span>
+        </td>
+        <td>{{ c['policy_name'] }}</td>
+        <td class="mono">{{ c['policy_number'] }}</td>
+        <td>{{ c['policy_type'] or '—' }}</td>
+        <td>{{ "₹{:,.0f}".format(c['premium_amount']) if c['premium_amount'] else '—' }}</td>
+        <td><span class="badge badge-{{ (c['status'] or 'active')|lower }}">{{ c['status'] or 'Active' }}</span></td>
+        <td class="row-actions">
+          <a href="{{ url_for('edit_customer', cid=c['id']) }}" class="link-edit">Edit</a>
+          <form method="POST" action="{{ url_for('delete_customer', cid=c['id']) }}" onsubmit="return confirm('Delete this policyholder record? This cannot be undone.');">
+            <button type="submit" class="link-delete">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-note">
+    {% if q %}No records match "{{ q }}".{% else %}No policyholders recorded yet. <a href="{{ url_for('new_customer') }}">Add the first one</a>.{% endif %}
+  </p>
+  {% endif %}
+</section>
+{% endblock %}

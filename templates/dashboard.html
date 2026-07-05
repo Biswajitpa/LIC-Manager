@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Overview · Policy Register{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <span class="eyebrow">Ledger — Page 01</span>
+    <h1>Overview</h1>
+  </div>
+  <a href="{{ url_for('new_customer') }}" class="btn btn-primary">+ New Entry</a>
+</header>
+
+<section class="stat-grid">
+  <div class="stat-card">
+    <span class="stat-label">Policyholders</span>
+    <span class="stat-value">{{ total_customers }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Active Policies</span>
+    <span class="stat-value">{{ active_policies }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Total Premium / term</span>
+    <span class="stat-value">₹{{ "{:,.0f}".format(total_premium) }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Total Sum Assured</span>
+    <span class="stat-value">₹{{ "{:,.0f}".format(total_sum_assured) }}</span>
+  </div>
+</section>
+
+<section class="chart-grid">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Policies by type</h2>
+      <span class="panel-note">Share of book, all-time</span>
+    </div>
+    {% if policy_type_labels %}
+    <canvas id="policyTypeChart" height="260"></canvas>
+    {% else %}
+    <p class="empty-note">No policies entered yet — add your first policyholder to see this chart.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Month-wise policy strategy</h2>
+      <span class="panel-note">New policies issued, by start month</span>
+    </div>
+    {% if month_labels %}
+    <canvas id="monthChart" height="260"></canvas>
+    {% else %}
+    <p class="empty-note">Add a policy start date to any entry to populate this chart.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Latest entries</h2>
+    <a href="{{ url_for('customers') }}" class="panel-link">View all →</a>
+  </div>
+  {% if recent %}
+  <table class="ledger-table">
+    <thead>
+      <tr>
+        <th>Policyholder</th>
+        <th>Policy Name</th>
+        <th>Policy Number</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in recent %}
+      <tr onclick="window.location='{{ url_for('edit_customer', cid=c['id']) }}'">
+        <td>{{ c['full_name'] }}</td>
+        <td>{{ c['policy_name'] }}</td>
+        <td class="mono">{{ c['policy_number'] }}</td>
+        <td><span class="badge badge-{{ c['status']|lower }}">{{ c['status'] or 'Active' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-note">Nothing recorded yet. <a href="{{ url_for('new_customer') }}">Add your first policyholder</a>.</p>
+  {% endif %}
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+const violet = '#7C3AED';
+const cyan = '#06B6D4';
+const pink = '#FB5D8A';
+const amber = '#FBBF24';
+const lime = '#84CC16';
+const coral = '#FF6B5B';
+const paletteRing = [violet, cyan, pink, amber, lime, coral, '#4C1D95'];
+
+{% if policy_type_labels %}
+new Chart(document.getElementById('policyTypeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: {{ policy_type_labels|tojson }},
+    datasets: [{
+      data: {{ policy_type_counts|tojson }},
+      backgroundColor: paletteRing,
+      borderColor: '#FFFFFF',
+      borderWidth: 3,
+      hoverOffset: 10
+    }]
+  },
+  options: {
+    animation: { animateScale: true, animateRotate: true, duration: 1100, easing: 'easeOutQuart' },
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 12 }, color: '#1C1B2E', padding: 14, usePointStyle: true, pointStyle: 'circle' } }
+    },
+    cutout: '62%'
+  }
+});
+{% endif %}
+
+{% if month_labels %}
+const monthGradientPlugin = (ctx) => {
+  const g = ctx.createLinearGradient(0, 0, 0, 260);
+  g.addColorStop(0, cyan);
+  g.addColorStop(1, violet);
+  return g;
+};
+new Chart(document.getElementById('monthChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ month_labels|tojson }},
+    datasets: [{
+      label: 'New policies',
+      data: {{ month_counts|tojson }},
+      backgroundColor: monthGradientPlugin(document.getElementById('monthChart').getContext('2d')),
+      borderRadius: 8,
+      maxBarThickness: 34,
+      hoverBackgroundColor: pink
+    }]
+  },
+  options: {
+    animation: { duration: 1000, easing: 'easeOutBack' },
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { family: 'JetBrains Mono', size: 11 }, color: '#6C6994' } },
+      y: { beginAtZero: true, ticks: { precision: 0, font: { family: 'Inter', size: 11 }, color: '#6C6994' }, grid: { color: '#E7E2FA' } }
+    }
+  }
+});
+{% endif %}
+
+// Animated count-up for stat cards
+document.querySelectorAll('.stat-value').forEach(el => {
+  const raw = el.textContent.trim();
+  const match = raw.match(/^([^\d]*)([\d,]+)(.*)$/);
+  if (!match) return;
+  const [, prefix, numStr, suffix] = match;
+  const target = parseInt(numStr.replace(/,/g, ''), 10);
+  if (isNaN(target)) return;
+  let current = 0;
+  const duration = 900;
+  const startTime = performance.now();
+  function tick(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    current = Math.round(target * eased);
+    el.textContent = prefix + current.toLocaleString() + suffix;
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+});
+</script>
+{% endblock %}

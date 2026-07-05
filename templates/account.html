@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Settings · Policy Register{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <span class="eyebrow">Settings</span>
+    <h1>Account</h1>
+  </div>
+</header>
+
+<section class="panel form-grid" style="max-width: 480px;">
+  <fieldset>
+    <legend>Change password</legend>
+    <form method="POST" class="field-column">
+      <label>Current password
+        <input type="password" name="current_password" required>
+      </label>
+      <label>New password
+        <input type="password" name="new_password" required minlength="6">
+      </label>
+      <label>Confirm new password
+        <input type="password" name="confirm_password" required minlength="6">
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Update password</button>
+      </div>
+    </form>
+  </fieldset>
+</section>
+{% endblock %}
