@@ -46,7 +46,56 @@ a single laptop.
 
 ---
 
-## 🧰 Tech stack
+## 🏗️ System Design
+
+**High-level architecture** — how a request travels from your browser all the way to your data and back:
+
+```mermaid
+flowchart LR
+    A["🧑‍💼 Agent's Browser"] -- HTTPS --> B["⚡ Vercel<br/>(Flask, serverless)"]
+    B -- "Session cookie<br/>(signed with SECRET_KEY)" --> A
+    B -- "HTTPS · libSQL protocol" --> C[("🗄️ Turso Database<br/>(hosted, SQLite-compatible)")]
+    C -- query results --> B
+
+    subgraph Flask App Routes
+        D["🔐 /login · /signup"]
+        E["📊 /dashboard"]
+        F["🧾 /customers<br/>(add · edit · delete · search)"]
+        G["📥 /export/csv"]
+    end
+
+    B --- D
+    B --- E
+    B --- F
+    B --- G
+
+    style A fill:#7C3AED,stroke:#5B21B6,color:#fff
+    style B fill:#0F1030,stroke:#7C3AED,color:#fff
+    style C fill:#06B6D4,stroke:#0891B2,color:#fff
+```
+
+**Request lifecycle** — what happens on a typical sign-in:
+
+```mermaid
+sequenceDiagram
+    participant U as 🧑‍💼 Agent
+    participant F as ⚡ Flask (Vercel)
+    participant T as 🗄️ Turso DB
+
+    U->>F: POST /login (username, password)
+    F->>T: SELECT user WHERE username = ?
+    T-->>F: user row (hashed password)
+    F->>F: check_password_hash()
+    alt password matches
+        F-->>U: ✅ Set session cookie → redirect to /dashboard
+    else password wrong
+        F-->>U: ⚠️ "Wrong username or password"
+    end
+```
+
+Everything runs **serverless** on Vercel — no server to patch, restart, or babysit. Every request spins up fresh, talks to Turso over plain HTTPS (no lingering connections to manage), and shuts down. Your data always lives safely outside the app itself, in Turso.
+
+---
 
 - **Backend:** Python 3 + Flask
 - **Database:** [Turso](https://turso.tech) (hosted, SQLite-compatible — no server to manage, no local file to lose)
@@ -129,7 +178,9 @@ lic_manager/
 
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Source+Serif+Pro&weight=600&size=24&duration=3000&pause=800&color=7C3AED&center=true&vCenter=true&width=560&lines=Built+for+agents%2C+not+spreadsheets.;Every+policy%2C+one+place.;Made+with+%E2%9D%A4%EF%B8%8F+and+a+lot+of+coffee.)](https://git.io/typing-svg)
 
-### 🖋️ Credited & maintained by **Biswajit Pattanaik**
+### 🖋️ Designed, built, and lovingly maintained by **Biswajit Pattanaik**
+
+<sub>If this saved you a headache or two, a ⭐ on the repo would make my day.</sub>
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:06B6D4,50:7C3AED,100:FB5D8A&height=150&section=footer&animation=fadeIn" width="100%"/>
 
