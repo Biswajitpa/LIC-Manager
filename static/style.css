@@ -58,6 +58,14 @@ a { color: var(--violet); text-decoration: none; }
 a:hover { text-decoration: underline; }
 button { font-family: inherit; cursor: pointer; }
 
+/* Charts, images, and embeds (e.g. dashboard pie/bar charts) never
+   force horizontal overflow on narrow screens, regardless of what
+   fixed width/height the charting library sets inline. */
+canvas, svg, img, embed, object {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Smooth, non-jarring scroll for in-page anchor jumps (settings nav, etc) */
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
@@ -692,6 +700,18 @@ button { font-family: inherit; cursor: pointer; }
 
 .field-column { display: flex; flex-direction: column; gap: 16px; }
 
+/* A field-row variant for exactly two fields side by side (e.g.
+   nominee name + relation). Collapses to one column on mobile,
+   same as field-row, via the shared media query below. */
+.field-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.field-full-tight { margin-bottom: 0; }
+
 .field-full { display: block; margin-bottom: 16px; }
 
 label {
@@ -876,11 +896,48 @@ textarea { resize: vertical; font-weight: 400; }
   .sidebar { position: relative; height: auto; flex-direction: row; align-items: center; padding: 16px 20px; overflow-x: auto; }
   .sidebar-brand { margin-bottom: 0; margin-right: 24px; }
   .sidebar-nav { flex-direction: row; }
-  .sidebar-footer { display: none; }
+  .sidebar-footer {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    border-top: none;
+    padding-top: 0;
+    margin-left: auto;
+    white-space: nowrap;
+  }
   .main-content { padding: 24px; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .chart-grid { grid-template-columns: 1fr; }
   .field-row { grid-template-columns: 1fr; }
+  .field-row-2 { grid-template-columns: 1fr; }
+}
+
+/* ---------------- Small phones ----------------
+   Below ~480px: single-column stat cards, larger touch targets on
+   buttons/inputs (44px is the accepted minimum tap-target height),
+   tighter page padding, and the auth card loses its side margins
+   so it isn't squeezed on narrow devices. */
+@media (max-width: 480px) {
+  .main-content { padding: 16px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .page-header .btn { width: 100%; }
+  .stat-grid { grid-template-columns: 1fr; }
+  .panel { padding: 18px 16px; border-radius: 12px; }
+
+  .btn { padding: 13px 20px; min-height: 44px; }
+  input, select, textarea { padding: 12px 13px; font-size: 16px; } /* 16px avoids iOS auto-zoom on focus */
+  .icon-field input, .icon-field select { padding-left: 38px; }
+
+  .search-bar { flex-direction: column; }
+  .search-bar .btn { width: 100%; }
+
+  .row-actions { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .ledger-table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+
+  .auth-page { padding: 12px; }
+  .auth-card { padding: 32px 22px; border-radius: 16px; }
+
+  .sidebar-nav a span:not(.nav-num) { font-size: 13px; }
 }
 
 /* prefers-reduced-motion: freeze every animation to a single, instant
