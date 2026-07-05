@@ -203,6 +203,40 @@ def login():
     return render_template("login.html")
 
 
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm_password", "")
+
+        if not username or len(username) < 3:
+            flash("Username must be at least 3 characters.", "error")
+        elif len(password) < 6:
+            flash("Password must be at least 6 characters.", "error")
+        elif password != confirm:
+            flash("Passwords do not match.", "error")
+        else:
+            existing = query_one(
+                "SELECT id FROM users WHERE username = ?", (username,)
+            )
+            if existing:
+                flash("That username is already taken.", "error")
+            else:
+                execute(
+                    "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                    (username, generate_password_hash(password)),
+                )
+                new_user = query_one(
+                    "SELECT * FROM users WHERE username = ?", (username,)
+                )
+                session["user_id"] = new_user["id"]
+                session["username"] = new_user["username"]
+                flash("Account created. Welcome!", "success")
+                return redirect(url_for("dashboard"))
+    return render_template("signup.html")
+
+
 @app.route("/logout")
 def logout():
     session.clear()
